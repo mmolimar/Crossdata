@@ -15,6 +15,9 @@
  */
 package com.stratio.crossdata.server.actors
 
+import java.io.{FileOutputStream, InputStream, File}
+import java.lang.reflect.Method
+import java.net.{URL, URLClassLoader}
 import java.util.UUID
 
 import akka.actor.SupervisorStrategy.Restart
@@ -24,12 +27,15 @@ import akka.cluster.ClusterEvent.InitialStateAsSnapshot
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Publish, Subscribe, SubscribeAck}
 import akka.remote.DisassociatedEvent
+import com.google.common.io.Files
 import com.stratio.crossdata.common.result.{ErrorSQLResult, SuccessfulSQLResult}
 import com.stratio.crossdata.common.security.Session
 import com.stratio.crossdata.common.{CommandEnvelope, SQLCommand, _}
 import com.stratio.crossdata.server.actors.JobActor.Commands.{CancelJob, StartJob}
 import com.stratio.crossdata.server.actors.JobActor.Events.{JobCompleted, JobFailed}
-import com.stratio.crossdata.server.config.ServerActorConfig
+import com.stratio.crossdata.server.config.{ServerConfig, ServerActorConfig}
+import com.stratio.crossdata.utils.HdfsUtils
+import com.typesafe.config.Config
 import org.apache.log4j.Logger
 import org.apache.spark.sql.crossdata.XDContext
 import org.apache.spark.sql.types.StructType
@@ -43,8 +49,8 @@ object ServerActor {
   val addJarTopic: String = "newJAR"
 
 
-  def props(cluster: Cluster, xdContext: XDContext, config: ServerActorConfig): Props =
-    Props(new ServerActor(cluster, xdContext, config))
+  def props(cluster: Cluster, xdContext: XDContext, serverActorConfig: ServerActorConfig): Props =
+    Props(new ServerActor(cluster, xdContext, serverActorConfig))
 
 
   protected case class JobId(requester: ActorRef, queryId: UUID)
@@ -60,7 +66,7 @@ object ServerActor {
 
 }
 
-class ServerActor(cluster: Cluster, xdContext: XDContext, config: ServerActorConfig) extends Actor {
+class ServerActor(cluster: Cluster, xdContext: XDContext, serverActorConfig: ServerActorConfig) extends Actor with ServerConfig{
 
   import ServerActor.ManagementMessages._
   import ServerActor._
@@ -119,7 +125,11 @@ class ServerActor(cluster: Cluster, xdContext: XDContext, config: ServerActorCon
       if (addJarCommand.path.toLowerCase.startsWith("hdfs://")) {
         xdContext.addJar(addJarCommand.path)
         //add to runtime
+        val hdfsIS:InputStream=HdfsUtils(addJarCommand.hdfsConfig.get).getFile(addJarCommand.path)
+        val file:File=createFile(hdfsIS,config.getString(ServerConfig.repoJars))
 
+
+        addToClasspath(file)
 
         sender ! SQLReply(addJarCommand.requestId, SuccessfulSQLResult(Array.empty, new StructType()))
       } else {
@@ -128,6 +138,27 @@ class ServerActor(cluster: Cluster, xdContext: XDContext, config: ServerActorCon
 
     case CommandEnvelope(cc @ CancelQueryExecution(queryId), session @ Session(id, requester)) =>
       st.jobsById.get(JobId(requester, queryId)).get ! CancelJob
+  }
+
+  private def addToClasspath(file : File) : Unit = {
+    if (file.exists) {
+      val method : Method = classOf[URLClassLoader].getDeclaredMethod("addURL", classOf[URL])
+
+      method.setAccessible(true)
+      method.invoke(ClassLoader.getSystemClassLoader, file.toURI.toURL)
+    } else {
+      logger.warn(s"The file ${file.getName} not exists.")
+    }
+  }
+
+  private def createFile(hdfsIS: InputStream, path: String): File = {
+    val targetFile = new File(path)
+
+    val arrayBuffer = new Array[Byte](hdfsIS.available)
+    hdfsIS.read(arrayBuffer)
+
+    Files.write(arrayBuffer, targetFile)
+    targetFile
   }
 
   // Receive functions:
@@ -206,7 +237,7 @@ class ServerActor(cluster: Cluster, xdContext: XDContext, config: ServerActorCon
       logger.warn(s"Something is going wrong! Unknown message: $any")
   }
 
-  private def sentenceToDeath(victim: ActorRef): Unit = config.completedJobTTL match {
+  private def sentenceToDeath(victim: ActorRef): Unit = serverActorConfig.completedJobTTL match {
     case finite: FiniteDuration =>
       context.system.scheduler.scheduleOnce(finite, self, FinishJob(victim))(context.dispatcher)
     case _ => // Reprieve by infinite limit
@@ -218,7 +249,7 @@ class ServerActor(cluster: Cluster, xdContext: XDContext, config: ServerActorCon
   }
 
   //TODO: Use number of tries and timeout configuration parameters
-  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy(config.retryNoAttempts, config.retryCountWindow) {
+  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy(serverActorConfig.retryNoAttempts, serverActorConfig.retryCountWindow) {
     case _ => Restart //Crashed job gets restarted (or not, depending on `retryNoAttempts` and `retryCountWindow`)
   }
 

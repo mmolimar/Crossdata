@@ -16,6 +16,8 @@
 package com.stratio.crossdata.server
 
 import java.io.File
+import java.lang.reflect.Method
+import java.net.{URL, URLClassLoader}
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.contrib.pattern.ClusterClient.Publish
@@ -68,10 +70,9 @@ class CrossdataHttpServer(config:Config, serverActor:ActorRef, httpSystem:ActorS
           // when processing have finished create a response for the user
           onSuccess(allPartsF) { allParts =>
             complete {
-              val hdfsConfig=XDContext.xdConfig.getConfig("hdfs")
-              //Send a broadcast message to all servers
-              val hdfsPath=writeJarToHdfs(hdfsConfig,path)
-              mediator ! Publish(addJarTopic, CommandEnvelope(AddJARCommand(hdfsPath),new Session("HttpServer",serverActor)))
+              val hdfsConf=XDContext.xdConfig.getConfig("hdfs")
+              val hdfsPath=writeJarToHdfs(hdfsConf,path)
+              mediator ! Publish(addJarTopic, CommandEnvelope(AddJARCommand(hdfsPath,hdfsConfig=Option(hdfsConf)),new Session("HttpServer",serverActor)))
               hdfsPath
             }
           }
@@ -93,6 +94,7 @@ class CrossdataHttpServer(config:Config, serverActor:ActorRef, httpSystem:ActorS
     }
     s"hdfs://$hdfsMaster/$destPath/$jarName"
   }
+
 
 
 
