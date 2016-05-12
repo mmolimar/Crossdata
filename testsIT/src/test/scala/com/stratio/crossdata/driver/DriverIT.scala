@@ -28,6 +28,7 @@ import scala.reflect.io.File
 @RunWith(classOf[JUnitRunner])
 class DriverIT extends EndToEndTest {
 
+
   "Crossdata" should "return an ErrorResult when running an unparseable query" in {
 
     assumeCrossdataUpAndRunning()
@@ -93,18 +94,18 @@ class DriverIT extends EndToEndTest {
 
   }
 
-  // TODO move to examples??
+
   // TODO check this tests with HDFS
-  it should "be able to execute ADD JAR Command of an existent file" in {
-    val file=File("/tmp/jar").createFile(false)
-    val driver = Driver.getOrCreate()
-    val result = driver.addJar(s"/home/jjlopez/Stratio/workspaceJDBC/JDBCPackage/CrossdataJDBC_v1.2.0-SNAPSHOT.tar.gz").waitForResult()
-
-    driver.stop()
-    file.delete()
-
-    result.hasError should equal (false)
-  }
+//  it should "be able to execute ADD JAR Command of an existent file" in {
+//    val file=File("/tmp/jar").createFile(false)
+//    val driver = Driver.getOrCreate()
+//    val result = driver.addJar(s"/home/jjlopez/Stratio/workspaceJDBC/JDBCPackage/CrossdataJDBC_v1.2.0-SNAPSHOT.tar.gz").waitForResult()
+//
+//    driver.stop()
+//    file.delete()
+//
+//    result.hasError should equal (false)
+//  }
 
 //  it should "be return an Error when execute ADD JAR Command of an un-existent file" in {
 //

@@ -45,6 +45,9 @@ object ServerConfig {
   // Host
   val Host="akka.remote.netty.tcp.hostname"
 
+  // Jars Repo
+  val repoJars="config.externalJarsRepo"
+
 }
 
 trait ServerConfig extends NumberActorConfig {

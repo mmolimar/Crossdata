@@ -84,15 +84,18 @@ class CrossdataServer extends Daemon with ServerConfig {
         actorName)
       ClusterReceptionistExtension(actorSystem).registerService(serverActor)
 
+
       implicit val httpSystem = actorSystem
       implicit val materializer = ActorMaterializer()
       val httpServerActor = new CrossdataHttpServer(config, serverActor, actorSystem)
       val host = config.getString(ServerConfig.Host)
       // TODO RestPort should be configurable
-      bindingFuture = Option(Http().bindAndHandle(httpServerActor.route, host, 13422))
+      Future(Http().bindAndHandle(httpServerActor.route, host, 13422))
+      logger.info(s"Crossdata Server started --- v${crossdata.CrossdataVersion}")
+
     }
 
-    logger.info(s"Crossdata Server started --- v${crossdata.CrossdataVersion}")
+
   }
 
   def checkMetricsFile(params: Map[String, String], metricsPath: String): Map[String, String] = {
