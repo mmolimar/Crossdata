@@ -32,6 +32,7 @@ import org.apache.spark.sql.crossdata.XDContext
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.collection.JavaConversions._
+import scala.concurrent.Future
 
 
 class CrossdataServer extends Daemon with ServerConfig {
@@ -81,14 +82,18 @@ class CrossdataServer extends Daemon with ServerConfig {
         actorName)
       ClusterReceptionistExtension(actorSystem).registerService(serverActor)
 
+
       implicit val httpSystem = system.getOrElse(ActorSystem(clusterName, config))
       implicit val materializer = ActorMaterializer()
       val httpServerActor=new CrossdataHttpServer(config,serverActor, httpSystem)
       val host=config.getString(ServerConfig.Host)
-      Http().bindAndHandle(httpServerActor.route, host, 13422)
+
+      implicit val exC = httpServerActor.system.dispatcher
+      Future(Http().bindAndHandle(httpServerActor.route, host, 13422))
+      logger.info(s"Crossdata Server started --- v${crossdata.CrossdataVersion}")
     }
 
-    logger.info(s"Crossdata Server started --- v${crossdata.CrossdataVersion}")
+
   }
 
   def checkMetricsFile(params: Map[String, String], metricsPath: String): Map[String, String] = {

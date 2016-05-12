@@ -127,8 +127,6 @@ class ServerActor(cluster: Cluster, xdContext: XDContext, serverActorConfig: Ser
         //add to runtime
         val hdfsIS:InputStream=HdfsUtils(addJarCommand.hdfsConfig.get).getFile(addJarCommand.path)
         val file:File=createFile(hdfsIS,config.getString(ServerConfig.repoJars))
-
-
         addToClasspath(file)
 
         sender ! SQLReply(addJarCommand.requestId, SuccessfulSQLResult(Array.empty, new StructType()))
@@ -166,7 +164,7 @@ class ServerActor(cluster: Cluster, xdContext: XDContext, serverActorConfig: Ser
   // Broadcast messages treatment
   def broadcastRequestsRec(st: State): Receive = {
     case DelegateCommand(_, broadcaster) if broadcaster == self => //Discards from this server broadcast delegated-commands
-
+      logger.info("Same broadcaster")
     case DelegateCommand(cmd, broadcaster) if broadcaster != self =>
       cmd match {
         // Inner pattern matching for future delegated command validations
