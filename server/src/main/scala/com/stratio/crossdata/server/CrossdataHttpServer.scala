@@ -71,9 +71,9 @@ class CrossdataHttpServer(config: Config, serverActor: ActorRef, implicit val sy
           onSuccess(allPartsF) { allParts =>
             complete {
 
-              val hdfsConfig = XDContext.xdConfig.getConfig("hdfs")
               //Send a broadcast message to all servers
-              val hdfsPath = writeJarToHdfs(hdfsConfig, path)
+              val hdfsConf=XDContext.xdConfig.getConfig("hdfs")
+              val hdfsPath = writeJarToHdfs(hdfsConf, path)
               mediator ! Publish(AddJarTopic, CommandEnvelope(AddJARCommand(hdfsPath,hdfsConfig=Option(hdfsConf)), new Session("HttpServer", serverActor)))
 
               hdfsPath
