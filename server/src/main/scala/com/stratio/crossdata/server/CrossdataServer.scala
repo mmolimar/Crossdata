@@ -90,6 +90,7 @@ class CrossdataServer extends Daemon with ServerConfig {
       val httpServerActor = new CrossdataHttpServer(config, serverActor, actorSystem)
       val host = config.getString(ServerConfig.Host)
       // TODO RestPort should be configurable
+      implicit val exC = httpServerActor.system.dispatcher
       Future(Http().bindAndHandle(httpServerActor.route, host, 13422))
       logger.info(s"Crossdata Server started --- v${crossdata.CrossdataVersion}")
 
