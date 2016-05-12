@@ -95,7 +95,7 @@ class DriverIT extends EndToEndTest {
   }
 
 
-  // TODO check this tests with HDFS
+//  // TODO check this tests with HDFS
 //  it should "be able to execute ADD JAR Command of an existent file" in {
 //    val file=File("/tmp/jar").createFile(false)
 //    val driver = Driver.getOrCreate()
