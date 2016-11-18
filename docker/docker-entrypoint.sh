@@ -40,7 +40,7 @@ DOCKER_HOST="hostname -f"
 if [[ "$(hostname -f)" =~ \. ]]; then
   DOCKER_HOST="$(hostname -f)"
 else
-  DOCKER_HOST="$(hostname -i|tr " " "\n"|sort -r|tr "\n" " "| awk '{gsub(/^ +| +$/,"")}1')"
+  DOCKER_HOST="$(hostname -i|tr " " "\n"|grep -v "127.0.0.1"| awk '{gsub(/^ +| +$/,"")}1')"
 fi
 
 #Scenary: Working out from Marathon
